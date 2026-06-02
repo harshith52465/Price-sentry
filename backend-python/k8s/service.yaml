@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: price-sentinel-service
+  namespace: default
+  labels:
+    app: price-sentinel
+spec:
+  type: LoadBalancer # Exposes the service to the internet with a public cloud external IP
+  ports:
+  - port: 80           # Expose port 80 to web agents
+    targetPort: 8000   # Route internally to our FastAPI uvicorn daemon port
+    protocol: TCP
+    name: http
+  selector:
+    app: price-sentinel

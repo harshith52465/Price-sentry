@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: price-sentinel-backend
+  namespace: default
+  labels:
+    app: price-sentinel
+    tier: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: price-sentinel
+  template:
+    metadata:
+      labels:
+        app: price-sentinel
+    spec:
+      containers:
+      - name: sentinel-api
+        image: gcr.io/deal-aggregator-project/sentry-backend:v1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http-web
+        
+        # Injects production configuration parameters securely from environment variables / secret volumes
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: pg-db-secrets
+              key: database-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pg-db-secrets
+              key: database-password
+        - name: POSTGRES_HOST
+          value: "postgres-db-service.default.svc.cluster.local"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_DB
+          value: "pricesentinel_production"
+
+        # Safe container usage guidelines
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1024Mi
+          requests:
+            cpu: "250m"
+            memory: 512Mi
+
+        # Dynamic health indicators to ensure no-downtime rolling upgrades
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
